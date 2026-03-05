@@ -79,6 +79,8 @@ public class GameRunner implements AppletStub, AppletContext {
     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     frame.add(applet);
     frame.pack();
+    // Force applet to exactly fill content pane (prevents size=0 timing issue)
+    applet.setSize(frame.getContentPane().getSize());
     frame.setLocationRelativeTo(null);
     frame.setVisible(true);
 

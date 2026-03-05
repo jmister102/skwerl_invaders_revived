@@ -57,7 +57,9 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
   static final int STATE_SHOWSCORES = 18;
   
   static final int STATE_GETPLAYERNAME = 19;
-  
+
+  static final int STATE_HELPSCREEN = 20;
+
   static final int IMGBUTTONWIDTH = 256;
   
   static final int IMGBUTTONHEIGHT = 288;
@@ -360,8 +362,13 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
       CBLength1 = CBfm.stringWidth(CBText1);
       CBLength2 = CBfm.stringWidth(CBText2);
       paramGraphics.drawString("Score: " + this.CurrentPlayer.TotalPoints, 10, this.AppHeight - 4);
+      if (this.GameState == 6) {
+        paramGraphics.setColor(new Color(0, 200, 200));
+        paramGraphics.drawString("[C]=Weapon", 200, this.AppHeight - 4);
+        paramGraphics.setColor(Color.green);
+      }
       if (this.GameMode == 0)
-        paramGraphics.drawString(CBText1, (this.AppWidth >> 1) - (CBLength1 >> 1), this.AppHeight - 4); 
+        paramGraphics.drawString(CBText1, (this.AppWidth >> 1) - (CBLength1 >> 1), this.AppHeight - 4);
       paramGraphics.drawString(CBText2, this.AppWidth - 10 - CBLength2, this.AppHeight - 4);
     } else if (this.GameState == 0 || this.GameState == 11) {
       paramGraphics.setFont(this.LargeFont2);
@@ -632,6 +639,8 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
     System.out.println("Running Squirrel Invaders v1.00.00 from: " + this.Host);
     this.AppWidth = (getBounds()).width;
     this.AppHeight = (getBounds()).height;
+    if (this.AppWidth <= 0) this.AppWidth = 824;
+    if (this.AppHeight <= 0) this.AppHeight = 600;
     this.egScrollY = this.AppHeight + this.egLineSpacing;
     this.ImageBack = createImage(this.AppWidth, this.AppHeight);
     this.DoubleBuffer = this.ImageBack.getGraphics();
@@ -734,13 +743,13 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
         break;
       case 10:
         if (this.btnHelp.CheckKeyPress(paramKeyEvent))
-          OpenHelpWindow(); 
+          this.GameState = STATE_HELPSCREEN;
         if (this.btnHighScores.CheckKeyPress(paramKeyEvent))
-          StartHighScores(); 
+          StartHighScores();
         if (this.btnStart.CheckKeyPress(paramKeyEvent)) {
           this.GameMode = 0;
           this.GameState = 12;
-        } 
+        }
         break;
       case 5:
         this.WeaponStateScreen.CheckKeys(paramKeyEvent);
@@ -750,9 +759,12 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
           this.GameState = 5;
           this.btnOK.Disable();
           this.btnOK = null;
-        } 
+        }
         break;
-    } 
+      case 20:
+        this.GameState = STATE_INTROMAIN;
+        break;
+    }
   }
   
   public void mouseClicked(MouseEvent paramMouseEvent) {
@@ -784,13 +796,13 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
         break;
       case 10:
         if (this.btnHelp.CheckClick(paramMouseEvent))
-          OpenHelpWindow(); 
+          this.GameState = STATE_HELPSCREEN;
         if (this.btnHighScores.CheckClick(paramMouseEvent))
-          StartHighScores(); 
+          StartHighScores();
         if (this.btnStart.CheckClick(paramMouseEvent)) {
           this.GameMode = 0;
           this.GameState = 12;
-        } 
+        }
         break;
       case 5:
         this.WeaponStateScreen.CheckClicks(paramMouseEvent);
@@ -800,7 +812,10 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
           this.GameState = 5;
           this.btnOK.Disable();
           this.btnOK = null;
-        } 
+        }
+        break;
+      case 20:
+        this.GameState = STATE_INTROMAIN;
         break;
     } 
   }
@@ -1446,9 +1461,40 @@ public class game extends Applet implements Runnable, MouseListener, MouseMotion
             } while (!this.Tracker.checkAll(true));
           } 
           this.GameState = this.WeaponPreviousState;
-        } 
+        }
         break;
-    } 
+      case 20:
+        this.DoubleBuffer.setColor(Color.black);
+        this.DoubleBuffer.fillRect(0, 0, this.AppWidth, this.AppHeight);
+        ClearBottom(this.DoubleBuffer);
+        Utils.SetDefCS(this.DoubleBuffer, Color.yellow, this.LargeFont, this.AppWidth);
+        Utils.CenterString("= Controls =", 25);
+        this.DoubleBuffer.setFont(this.MedFont);
+        this.DoubleBuffer.setColor(Color.white);
+        this.DoubleBuffer.drawString("Move:          Mouse or Arrow Keys", 100, 50);
+        this.DoubleBuffer.drawString("Fire:          Left Click or Spacebar", 100, 70);
+        this.DoubleBuffer.drawString("Cycle Weapon:  Right Click or C", 100, 90);
+        this.DoubleBuffer.drawString("Reset:         F3", 100, 110);
+        this.DoubleBuffer.drawString("Toggle Music:  M", 100, 130);
+        this.DoubleBuffer.drawString("Toggle Sound:  S", 100, 150);
+        Utils.SetDefCS(this.DoubleBuffer, Color.yellow, this.LargeFont, this.AppWidth);
+        Utils.CenterString("= Weapon Types =", 175);
+        this.DoubleBuffer.setFont(this.SmallFont);
+        this.DoubleBuffer.setColor(Color.white);
+        this.DoubleBuffer.drawString("Single:       One shot straight up", 100, 200);
+        this.DoubleBuffer.drawString("Double Fire:  Two shots straight up", 100, 215);
+        this.DoubleBuffer.drawString("W-Beam:       Three shots (one up, two angled)", 100, 230);
+        this.DoubleBuffer.drawString("Laser:        Single slow penetrating blast; goes through enemies", 100, 245);
+        this.DoubleBuffer.drawString("5-Way:        Five directional shots", 100, 260);
+        this.DoubleBuffer.drawString("Flamethrower: Continuous damage", 100, 275);
+        this.DoubleBuffer.drawString("Rocket:       Explodes on impact; triple damage vs bosses", 100, 290);
+        this.DoubleBuffer.drawString("Ice Beam:     Freezes enemies", 100, 305);
+        this.DoubleBuffer.drawString("Shield:       Absorbs a set number of hits", 100, 320);
+        Utils.SetDefCS(this.DoubleBuffer, new Color(0, 200, 200), this.MedFont, this.AppWidth);
+        Utils.CenterString("Click or press any key to return", 355);
+        paramGraphics.drawImage(this.ImageBack, 0, 0, this);
+        break;
+    }
     if (this.showFPS) {
       this.TotalFrameCount++;
       this.FPS = this.TotalFrameCount * 10000L / (System.currentTimeMillis() - this.FirstFrame);

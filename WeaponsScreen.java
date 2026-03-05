@@ -290,6 +290,21 @@ public final class WeaponsScreen {
     } 
   }
   
+  private static String getBeamLabel(int special) {
+    switch (special) {
+      case 0:  return "[1x]";
+      case 1:  return "[2x]";
+      case 2:  return "[W-Beam]";
+      case 3:  return "[Laser]";
+      case 4:  return "[Flame]";
+      case 5:  return "[Shield]";
+      case 6:  return "[Rocket]";
+      case 7:  return "[5-Way]";
+      case 8:  return "[Ice]";
+      default: return "";
+    }
+  }
+
   public void DrawText(Graphics paramGraphics) {
     if (this.Mode == 0) {
       for (byte b = 0; b < 6; b++) {
@@ -300,20 +315,23 @@ public final class WeaponsScreen {
           String str2 = Integer.toString((this.WeaponArray[b]).Cost);
           String str3 = Integer.toString(this.PlayerData.WeaponUses[b + this.WeaponStart]);
           if (this.PlayerData.WeaponUses[b + this.WeaponStart] == -1)
-            str3 = "Inf."; 
+            str3 = "Inf.";
           if (this.PlayerData.WeaponUses[b + this.WeaponStart] == -2)
-            str3 = "N/A"; 
+            str3 = "N/A";
           paramGraphics.setFont(this.MedFont);
           if ((this.WeaponArray[b]).Cost <= 10000) {
             paramGraphics.setColor(new Color(0, 225, 225));
           } else {
             paramGraphics.setColor(new Color(250, 195, 0));
-          } 
+          }
           paramGraphics.drawString(str1, this.XPositions[0], b * this.YSize + this.YTextStart);
           paramGraphics.drawString(str2, this.XPositions[1], b * this.YSize + this.YTextStart);
           paramGraphics.drawString(str3, this.XPositions[2], b * this.YSize + this.YTextStart);
-        } 
-      } 
+          paramGraphics.setFont(this.SmallFont);
+          paramGraphics.setColor(new Color(150, 255, 150));
+          paramGraphics.drawString(getBeamLabel((this.WeaponArray[b]).Special), this.XPositions[2] + 40, b * this.YSize + this.YTextStart);
+        }
+      }
     } else if (this.Mode == 1) {
       for (byte b = 0; b < 4; b++) {
         String str1 = (this.UpgradeArray[b]).Name;

@@ -111,5 +111,5 @@ export function _playMusic(buffer, ac) {
   musicNode.buffer = buffer;
   musicNode.loop   = true;
   musicNode.connect(ac.destination);
-  musicNode.start();
+  try { musicNode.start(); } catch (e) { console.warn('Music start failed:', e); musicNode = null; }
 }

@@ -145,6 +145,8 @@ export class Game {
 
   _onMouseClick(x, y) {
     Sound.unlockAudio();
+    if (this.currentMusic === null && this.bgMusicOn) this._startMusic('intro');
+    if (this.gameState === STATE_WEAPONHELP) { this.gameState = STATE_INTRO; return; }
     for (const btn of this._activeButtons()) {
       btn.checkClick(x, y);
     }
@@ -154,6 +156,7 @@ export class Game {
   _onKeyDown(e) {
     this.keys[e.code] = true;
     const k = e.key.toUpperCase();
+    if (this.currentMusic === null && this.bgMusicOn) this._startMusic('intro');
 
     // S = toggle sounds, M = toggle music
     if (k === 'S' && this.gameState !== STATE_GETPLAYERNAME) {
@@ -199,7 +202,7 @@ export class Game {
     }
     if (this.btnHelp?.clicked) {
       this.btnHelp.clicked = false;
-      window.open('https://nerdbucket.com/games/invaders/help.php', '_blank');
+      this.gameState = STATE_WEAPONHELP;
     }
     if (this.btnEasy?.clicked) {
       this.btnEasy.clicked = false; this.difficulty = 1; this.diffChosen = true;
@@ -218,33 +221,42 @@ export class Game {
 
   // ── Boot / asset setup ───────────────────────────────────────────────────────
   start() {
-    // Build sprite extractor from spritestrip.gif (512×896)
-    this.imgExtractor = new ImageExtractor(this.images.spritestrip, IMGSTRIPWIDTH, IMGSTRIPHEIGHT);
+    try {
+      // Build sprite extractor from spritestrip.gif (512×896)
+      if (!this.images.spritestrip) throw new Error('spritestrip image not loaded');
+      this.imgExtractor = new ImageExtractor(this.images.spritestrip, IMGSTRIPWIDTH, IMGSTRIPHEIGHT);
 
-    // Build strip extractor for background tiles (strip.gif is 512×896)
-    this.ieStrip = new ImageExtractor(this.images.strip, IMGSTRIPWIDTH, IMGSTRIPHEIGHT);
+      // Build strip extractor for background tiles (strip.gif is 512×896)
+      if (!this.images.strip) throw new Error('strip image not loaded');
+      this.ieStrip = new ImageExtractor(this.images.strip, IMGSTRIPWIDTH, IMGSTRIPHEIGHT);
 
-    // Build tiled background canvas
-    this._buildBackdrop();
+      // Build tiled background canvas
+      this._buildBackdrop();
 
-    // Setup explosions from spritestrip row 128
-    initExplosion(this.imgExtractor, 10);
+      // Setup explosions from spritestrip row 128
+      initExplosion(this.imgExtractor, 10);
 
-    // Floater colors/font
-    initFloater('#ffff00', this.smallFont);
+      // Floater colors/font
+      initFloater('#ffff00', this.smallFont);
 
-    // Build intro screen buttons
-    this._buildIntroButtons();
+      // Build intro screen buttons
+      this._buildIntroButtons();
 
-    // Start intro music
-    this._startMusic('intro');
+      // Music deferred to first user interaction (avoids AudioContext suspended error)
 
-    // Transition to intro
-    this.gameState = STATE_INTRO;
+      // Transition to intro
+      this.gameState = STATE_INTRO;
 
-    // Kick off game loop
-    this._lastTime = performance.now();
-    requestAnimationFrame(ts => this._loop(ts));
+      // Kick off game loop
+      this._lastTime = performance.now();
+      requestAnimationFrame(ts => this._loop(ts));
+    } catch (err) {
+      console.error('Game.start() failed:', err);
+      this.ctx.fillStyle = '#fff';
+      this.ctx.font = '14px monospace';
+      this.ctx.fillText('Error: ' + err.message, 20, 40);
+      this.ctx.fillText('See browser console for details', 20, 60);
+    }
   }
 
   _buildBackdrop() {
@@ -353,6 +365,13 @@ export class Game {
           this.gameState = STATE_INTRO;
         }
         break;
+      case STATE_WEAPONHELP:
+        // back to intro on any key
+        if (Object.values(this.keys).some(Boolean)) {
+          this.keys = {};
+          this.gameState = STATE_INTRO;
+        }
+        break;
     }
   }
 
@@ -367,10 +386,19 @@ export class Game {
     g.clearRect(0, 0, this.appWidth, this.appHeight);
 
     switch (this.gameState) {
+      case STATE_LOADING:
+      case STATE_LOADING2:
+        clearCanvas(g, Color.black, this.appWidth, this.appHeight);
+        centerString(g, Color.white, 'Loading...', this.largeFont, this.appWidth, this.appHeight / 2);
+        this._drawBottom(g);
+        break;
       case STATE_INTRO:
       case STATE_INTRO2:
       case STATE_INTROMAIN:
         this._drawIntroPage(g);
+        break;
+      case STATE_WEAPONHELP:
+        this._drawHelp(g);
         break;
       case STATE_CHOOSEDIFF:
         this._drawChooseDiff(g);
@@ -472,6 +500,11 @@ export class Game {
       g.fillStyle = Color.green;
       const scoreText = `Score: ${this.currentPlayer?.totalPoints ?? 0}`;
       g.fillText(scoreText, 10, this.appHeight - 4);
+      if (this.gameState === STATE_MAINGAME) {
+        g.fillStyle = '#00c8c8';
+        g.fillText('[C]=Weapon', 200, this.appHeight - 4);
+        g.fillStyle = Color.green;
+      }
       const levelText = `Level: ${this.gameLevel}`;
       const lw = g.measureText(levelText).width;
       g.fillText(levelText, this.appWidth - 10 - lw, this.appHeight - 4);
@@ -486,6 +519,50 @@ export class Game {
     } else if (this.gameState === STATE_INTROMAIN) {
       centerString(g, Color.white, "Click 'Begin' to start a game", this.largeFont2, this.appWidth, this.appHeight - 4);
     }
+  }
+
+  _drawHelp(g) {
+    clearCanvas(g, Color.black, this.appWidth, this.appHeight);
+    this._drawBottom(g);
+
+    // Controls section
+    centerString(g, Color.yellow, '= Controls =', this.largeFont, this.appWidth, 30);
+    g.font = this.medFont;
+    g.fillStyle = Color.white;
+    const controls = [
+      ['Move',         'Mouse or Arrow Keys'],
+      ['Fire',         'Left Click or Spacebar'],
+      ['Cycle Weapon', 'Right Click or C'],
+      ['Reset',        'F3'],
+      ['Toggle Music', 'M'],
+      ['Toggle Sound', 'S'],
+    ];
+    controls.forEach(([action, key], i) => {
+      g.fillText(`${action.padEnd(16)} ${key}`, 100, 55 + i * 20);
+    });
+
+    // Weapon types section
+    centerString(g, Color.yellow, '= Weapon Types =', this.largeFont, this.appWidth, 190);
+    g.font = this.smallFont;
+    const weapons = [
+      ['Single',       'One shot straight up'],
+      ['Double Fire',  'Two shots straight up'],
+      ['W-Beam',       'Three shots (one up, two angled)'],
+      ['Laser',        'Single slow penetrating blast; goes through enemies'],
+      ['5-Way',        'Five directional shots'],
+      ['Flamethrower', 'Continuous damage'],
+      ['Rocket',       'Explodes on impact; triple damage vs bosses'],
+      ['Ice Beam',     'Freezes enemies'],
+      ['Shield',       'Absorbs a set number of hits'],
+    ];
+    weapons.forEach(([name, desc], i) => {
+      g.fillStyle = '#96ff96';
+      g.fillText(name.padEnd(14), 100, 210 + i * 16);
+      g.fillStyle = Color.white;
+      g.fillText(desc, 220, 210 + i * 16);
+    });
+
+    centerString(g, '#00c8c8', 'Click or press any key to return', this.medFont, this.appWidth, this.appHeight - 30);
   }
 
   // TODO: _startGame, _updateGame full implementations
